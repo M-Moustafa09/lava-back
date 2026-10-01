@@ -131,12 +131,12 @@ app.UseCors("AllowFrontend");
 
 app.UseRateLimiter();
 
-// G1.1: this app now serves loxxking.com, which the CRM still hands out in customers' shipment-
-// tracking links (loxxking.com/t/{code} and /Order/TrackLoxxKingShipment/{code}). Those paths have
-// no route in the Angular SPA, so the router's catch-all sent customers to the home page. Forward
-// them with a 301 to the CRM's PUBLIC domain, where the tracking page lives, so links sent before
-// and after the domain switch both work. The base URL is config-driven (LegacyCrm:PublicTrackingBaseUrl)
-// so a test store can point at the test CRM instead of production.
+// The CRM hands Lavva customers shipment-tracking links on this store's domain
+// (lavvastore.com/t/{code}, and the older /Order/TrackLavaShipment/{code}). Those paths have no route
+// in the Angular SPA, so the router's catch-all would send customers to the home page. Forward them
+// with a 301 to the CRM's PUBLIC domain, where the tracking page lives (it renders the Lavva-branded
+// page for a Lavva order). The base URL is config-driven (LegacyCrm:PublicTrackingBaseUrl) so a test
+// store can point at the test CRM instead of production.
 var crmPublicTrackingBaseUrl =
     (app.Configuration["LegacyCrm:PublicTrackingBaseUrl"] ?? "https://luxira.org").TrimEnd('/');
 app.Use(async (context, next) =>
@@ -144,7 +144,7 @@ app.Use(async (context, next) =>
     var path = context.Request.Path;
     var isTrackingLink =
         path.StartsWithSegments("/t", StringComparison.OrdinalIgnoreCase)
-        || path.StartsWithSegments("/Order/TrackLoxxKingShipment", StringComparison.OrdinalIgnoreCase);
+        || path.StartsWithSegments("/Order/TrackLavaShipment", StringComparison.OrdinalIgnoreCase);
 
     if (isTrackingLink
         && (HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method)))
