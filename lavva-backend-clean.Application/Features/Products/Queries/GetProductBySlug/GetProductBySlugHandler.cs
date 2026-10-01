@@ -62,7 +62,8 @@ public class GetProductBySlugHandler : IRequestHandler<GetProductBySlugQuery, Re
             product.VideoUrl,
             product.InternationalPrice,
             product.InternationalOriginalPrice,
-            await ProductPriceReader.ForProductAsync(_context, product.Id, cancellationToken)
+            await ProductPriceReader.ForProductAsync(_context, product.Id, cancellationToken),
+            CategorySlug: product.Category.Slug
         );
 
         var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };

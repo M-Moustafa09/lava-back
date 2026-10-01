@@ -44,7 +44,8 @@ public record ProductListResponse(
     // The running offer (2026-09-22), laid over the cached response on every read (ActiveOffers):
     // the storefront takes OfferPercent off the visitor's price. The prices above stay undiscounted.
     decimal? OfferPercent = null,
-    DateTime? OfferEndsAt = null
+    DateTime? OfferEndsAt = null,
+    string? CategorySlug = null
 );
 
 public class GetProductsHandler : IRequestHandler<GetProductsQuery, Result<List<ProductListResponse>>>
@@ -108,7 +109,10 @@ public class GetProductsHandler : IRequestHandler<GetProductsQuery, Result<List<
                 p.Prices
                     .Where(pp => pp.Country.IsActive && !pp.Country.IsDeleted)
                     .Select(pp => new CountryPriceDto(pp.CountryId, pp.Country.Code, pp.Country.Currency, pp.Price, pp.OriginalPrice))
-                    .ToList()
+                    .ToList(),
+                null,
+                null,
+                p.Category.Slug
             )).ToListAsync(cancellationToken);
             
             var options = new DistributedCacheEntryOptions()

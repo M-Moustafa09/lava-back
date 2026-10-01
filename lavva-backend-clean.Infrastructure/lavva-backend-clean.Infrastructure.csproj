@@ -17,6 +17,10 @@
     <PackageReference Include="QuestPDF" Version="2026.8.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Persistence\Seeder\Data\lava-products.json" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>lavva_backend_clean.Infrastructure</RootNamespace>

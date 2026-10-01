@@ -17,14 +17,16 @@ public class CategorySeeder : IDataSeeder
 
         var categoriesToSeed = new (string NameAr, string NameEn, string Slug, string ImageUrl)[]
         {
-            ("ملابس رجالية", "Men's Apparel", "mens-apparel", "https://images.unsplash.com/photo-1617137984095-74e4e5e3613f"),
-            ("أحذية فاخرة", "Luxury Shoes", "luxury-shoes", "https://images.unsplash.com/photo-1542291026-7eec264c27ff"),
-            ("إكسسوارات وساعات", "Accessories & Watches", "accessories-watches", "https://images.unsplash.com/photo-1523275335684-37898b6baf30")
+            ("مشدات الخصر", "Waist Trainers", "waist-trainers", "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=400&fit=crop&auto=format"),
+            ("مشدات الجسم", "Body Shapers", "body-shapers", "https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=400&h=400&fit=crop&auto=format"),
+            ("مشدات ما بعد الولادة", "Postpartum Shapers", "postpartum", "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=400&h=400&fit=crop&auto=format"),
+            ("سترات الضغط", "Compression Vests", "compression-vests", "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400&h=400&fit=crop&auto=format"),
+            ("رافعات الأرداف", "Butt Lifters", "butt-lifters", "https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=400&h=400&fit=crop&auto=format"),
+            ("إكسسوارات", "Accessories", "accessories", "https://images.unsplash.com/photo-1590736969955-71cc94901144?w=400&h=400&fit=crop&auto=format")
         };
 
         foreach (var (nameAr, nameEn, slug, imageUrl) in categoriesToSeed)
         {
-            // IgnoreQueryFilters: a seed category the owner deleted must stay deleted, not come back on the next --seed.
             var existing = await dbContext.Categories.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.Slug == slug, cancellationToken);
             if (existing == null)
             {

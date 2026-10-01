@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Text.Json;
 using lavva_backend_clean.Domain.Entities.Inventory;
 using lavva_backend_clean.Domain.Entities.Products;
 using lavva_backend_clean.Domain.ValueObjects;
@@ -10,6 +12,10 @@ namespace lavva_backend_clean.Infrastructure.Persistence.Seeder.Products;
 
 public class ProductSeeder : IDataSeeder
 {
+    private const string SeedResourceSuffix = "lava-products.json";
+
+    private static readonly HashSet<string> LaunchCountryCodes = new(StringComparer.OrdinalIgnoreCase) { "EG", "SA", "AE" };
+
     public int Order => 5;
 
     public async Task SeedAsync(SeedContext context, IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
@@ -17,153 +23,78 @@ public class ProductSeeder : IDataSeeder
         var dbContext = serviceProvider.GetRequiredService<ApplicationDbContext>();
         var logger = serviceProvider.GetRequiredService<ILogger<ProductSeeder>>();
 
-        var apparelCategory = context.Categories.First(c => c.Slug == "mens-apparel");
-        var shoesCategory = context.Categories.First(c => c.Slug == "luxury-shoes");
-        var accessoriesCategory = context.Categories.First(c => c.Slug == "accessories-watches");
+        using var document = JsonDocument.Parse(ReadSeedFile());
 
-        var productsDefs = new (
-            string Slug, 
-            Guid CategoryId, 
-            string NameAr, 
-            string NameEn, 
-            string Description, 
-            decimal BasePrice, 
-            decimal? OriginalPrice, 
-            List<string> Images, 
-            List<string> Sizes, 
-            List<string> Colors, 
-            string? Badge, 
-            int Stock, 
-            double Rating, 
-            int ReviewCount, 
-            bool IsBestSeller, 
-            bool IsNew)[]
+        foreach (var item in document.RootElement.EnumerateArray())
         {
-            (
-                "oxford-cotton-shirt",
-                apparelCategory.Id,
-                "قميص قطن أكسفورد كلاسيكي",
-                "Classic Oxford Cotton Shirt",
-                "مصنوع من أجود خيوط القطن الطبيعي 100% بتصميم يجمع بين الأناقة الرسمية والراحة اليومية.",
-                1250m,
-                1500m,
-                new List<string> { "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf" },
-                new List<string> { "S", "M", "L", "XL" },
-                new List<string> { "White", "Sky Blue", "Navy" },
-                "Best Seller",
-                75,
-                4.8,
-                32,
-                true,
-                false
-            ),
-            (
-                "italian-leather-loafers",
-                shoesCategory.Id,
-                "حذاء لوفر جلد إيطالي يدوي",
-                "Handcrafted Italian Leather Loafers",
-                "حذاء لوفر فاخر مصنع يدويًا من الجلد الإيطالي الطبيعي مع نعل مريح مقاوم للانزلاق.",
-                2800m,
-                3200m,
-                new List<string> { "https://images.unsplash.com/photo-1533867617858-e7b97e060509" },
-                new List<string> { "41", "42", "43", "44", "45" },
-                new List<string> { "Cognac Brown", "Classic Black" },
-                "Premium",
-                40,
-                4.9,
-                18,
-                true,
-                true
-            ),
-            (
-                "minimalist-chronograph-watch",
-                accessoriesCategory.Id,
-                "ساعة كرونوغراف بتصميم عصري",
-                "Minimalist Chronograph Leather Watch",
-                "ساعة يد أنيقة بحركة كوارتز يابانية دقيقة وحزام من الجلد الطبيعي وزجاج مقاوم للخدش.",
-                3500m,
-                4000m,
-                new List<string> { "https://images.unsplash.com/photo-1524805444758-089113d48a6d" },
-                new List<string> { "42mm" },
-                new List<string> { "Silver/Black", "Rose Gold/Brown" },
-                "New Arrival",
-                25,
-                4.7,
-                14,
-                false,
-                true
-            )
-        };
+            var slug = item.GetProperty("slug").GetString()!;
+            var categorySlug = item.GetProperty("category").GetString()!;
+            var category = context.Categories.First(c => c.Slug == categorySlug);
 
-        foreach (var p in productsDefs)
-        {
-            // Deleted seed products still count as existing, or every restart would bring them back.
-            var existingProduct = await dbContext.Products.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Slug == p.Slug, cancellationToken);
-            if (existingProduct == null)
+            var existing = await dbContext.Products.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Slug == slug, cancellationToken);
+            if (existing == null)
             {
-                var product = Product.Create(
-                    categoryId: p.CategoryId,
-                    nameAr: p.NameAr,
-                    nameEn: p.NameEn,
-                    description: p.Description,
-                    slug: p.Slug,
-                    basePrice: Money.FromDecimal(p.BasePrice),
-                    originalPrice: p.OriginalPrice.HasValue ? Money.FromDecimal(p.OriginalPrice.Value) : null,
-                    images: p.Images,
-                    sizes: p.Sizes,
-                    colors: p.Colors,
-                    features: "خامات أصلية عالية الجودة | ضمان لمدة عام",
-                    shippingPolicy: "شحن سريع خلال 2-4 أيام عمل لجميع المحافظات",
-                    returnPolicy: "إمكانية الاستبدال والاسترجاع مجاناً خلال 14 يوماً",
-                    isNew: p.IsNew,
-                    isBestSeller: p.IsBestSeller,
-                    badge: p.Badge);
+                var price = item.GetProperty("price").GetDecimal();
+                var originalPrice = item.TryGetProperty("originalPrice", out var op) && op.ValueKind == JsonValueKind.Number ? op.GetDecimal() : (decimal?)null;
 
-                product.UpdateStock(p.Stock);
-                product.UpdateRating(p.Rating, p.ReviewCount);
+                var product = Product.Create(
+                    categoryId: category.Id,
+                    nameAr: item.GetProperty("nameAr").GetString()!,
+                    nameEn: item.GetProperty("nameEn").GetString()!,
+                    description: item.GetProperty("descAr").GetString() ?? string.Empty,
+                    slug: slug,
+                    basePrice: Money.FromDecimal(price),
+                    originalPrice: originalPrice.HasValue ? Money.FromDecimal(originalPrice.Value) : null,
+                    images: ReadStrings(item, "images"),
+                    sizes: ReadStrings(item, "sizes"),
+                    colors: ReadStrings(item, "colors"),
+                    features: null,
+                    shippingPolicy: null,
+                    returnPolicy: null,
+                    sizeChartJson: item.TryGetProperty("sizeChart", out var chart) ? chart.GetRawText() : null,
+                    isNew: item.TryGetProperty("isNew", out var isNew) && isNew.GetBoolean(),
+                    isBestSeller: item.TryGetProperty("isBestSeller", out var best) && best.GetBoolean(),
+                    badge: item.TryGetProperty("badge", out var badge) ? badge.GetString() : null);
+
+                product.Id = Guid.Parse(item.GetProperty("guid").GetString()!);
+                product.SetInternationalPrice(price, originalPrice);
+                product.UpdateStock(item.GetProperty("stock").GetInt32());
+                product.UpdateRating(item.GetProperty("rating").GetDouble(), item.GetProperty("reviewCount").GetInt32());
 
                 await dbContext.Products.AddAsync(product, cancellationToken);
                 await dbContext.SaveChangesAsync(cancellationToken);
 
-                logger.LogInformation("Seeded product '{NameEn}' ({Slug}).", p.NameEn, p.Slug);
-                existingProduct = product;
+                logger.LogInformation("Seeded product '{NameEn}' ({Slug}).", product.NameEn, slug);
+                existing = product;
             }
 
-            // Seed ProductPrices and InventoryItems across countries for this product
+            var stock = item.GetProperty("stock").GetInt32();
+            var seedPrice = item.GetProperty("price").GetDecimal();
+            var seedOriginalPrice = item.TryGetProperty("originalPrice", out var seedOp) && seedOp.ValueKind == JsonValueKind.Number ? seedOp.GetDecimal() : (decimal?)null;
+
             foreach (var country in context.Countries)
             {
-                // Pricing rule: EGP is base, SAR approx / 8, AED approx / 8
-                decimal countryPrice = country.Currency switch
+                if (LaunchCountryCodes.Contains(country.Code))
                 {
-                    "SAR" => Math.Round(p.BasePrice / 8m, 0),
-                    "AED" => Math.Round(p.BasePrice / 8m, 0),
-                    _ => p.BasePrice
-                };
+                    var priceExists = await dbContext.ProductPrices.AnyAsync(
+                        pr => pr.ProductId == existing.Id && pr.CountryId == country.Id,
+                        cancellationToken);
 
-                var priceExists = await dbContext.ProductPrices.AnyAsync(
-                    pr => pr.ProductId == existingProduct.Id && pr.CountryId == country.Id, 
-                    cancellationToken);
-
-                if (!priceExists)
-                {
-                    var productPrice = new ProductPrice
+                    if (!priceExists)
                     {
-                        ProductId = existingProduct.Id,
-                        CountryId = country.Id,
-                        Price = countryPrice
-                    };
-                    await dbContext.ProductPrices.AddAsync(productPrice, cancellationToken);
+                        await dbContext.ProductPrices.AddAsync(
+                            new ProductPrice { ProductId = existing.Id, CountryId = country.Id, Price = seedPrice, OriginalPrice = seedOriginalPrice },
+                            cancellationToken);
+                    }
                 }
 
                 var inventoryExists = await dbContext.InventoryItems.AnyAsync(
-                    inv => inv.ProductId == existingProduct.Id && inv.CountryId == country.Id, 
+                    inv => inv.ProductId == existing.Id && inv.CountryId == country.Id,
                     cancellationToken);
 
                 if (!inventoryExists)
                 {
-                    int countryQty = country.IsDefault ? 50 : 20;
-                    var invItem = InventoryItem.Create(existingProduct.Id, country.Id, countryQty);
-                    await dbContext.InventoryItems.AddAsync(invItem, cancellationToken);
+                    await dbContext.InventoryItems.AddAsync(InventoryItem.Create(existing.Id, country.Id, stock), cancellationToken);
                 }
             }
         }
@@ -171,5 +102,21 @@ public class ProductSeeder : IDataSeeder
         await dbContext.SaveChangesAsync(cancellationToken);
 
         context.Products = await dbContext.Products.ToListAsync(cancellationToken);
+    }
+
+    private static string ReadSeedFile()
+    {
+        var assembly = typeof(ProductSeeder).Assembly;
+        var resourceName = assembly.GetManifestResourceNames().Single(n => n.EndsWith(SeedResourceSuffix, StringComparison.Ordinal));
+        using var stream = assembly.GetManifestResourceStream(resourceName)!;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    private static List<string> ReadStrings(JsonElement item, string property)
+    {
+        return item.TryGetProperty(property, out var array) && array.ValueKind == JsonValueKind.Array
+            ? array.EnumerateArray().Select(e => e.GetString()!).ToList()
+            : new List<string>();
     }
 }
