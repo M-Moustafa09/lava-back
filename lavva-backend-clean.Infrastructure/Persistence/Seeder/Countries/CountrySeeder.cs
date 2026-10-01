@@ -35,6 +35,19 @@ public class CountrySeeder : IDataSeeder
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        // On a fresh database the countries come from a migration, not from the loop above, so none is the
+        // default — and SSO admin provisioning and staff creation need one. Egypt is the default, as above.
+        if (!await dbContext.Countries.AnyAsync(c => c.IsDefault, cancellationToken))
+        {
+            var egypt = await dbContext.Countries.FirstOrDefaultAsync(c => c.Name == "Egypt", cancellationToken);
+            if (egypt != null)
+            {
+                egypt.SetAsDefault();
+                await dbContext.SaveChangesAsync(cancellationToken);
+                logger.LogInformation("Marked 'Egypt' as the default country.");
+            }
+        }
+
         var allCountries = await dbContext.Countries.ToListAsync(cancellationToken);
         context.Countries = allCountries;
         context.DefaultCountry = allCountries.FirstOrDefault(c => c.IsDefault) ?? allCountries.First();

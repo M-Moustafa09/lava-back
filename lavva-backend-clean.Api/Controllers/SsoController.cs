@@ -52,9 +52,9 @@ public class SsoController : ControllerBase
         _jwtProvider = jwtProvider;
     }
 
-    [HttpPost("loxxking-token")]
+    [HttpPost("lavva-token")]
     [AllowAnonymous]
-    public async Task<IActionResult> LaunchLoxxking([FromForm] string token, CancellationToken ct)
+    public async Task<IActionResult> LaunchLavva([FromForm] string token, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(token))
         {
@@ -75,7 +75,7 @@ public class SsoController : ControllerBase
         rsa.ImportFromPem(publicKeyPem);
 
         var issuer = _config["Sso:Issuer"] ?? "LuxiraCRM";
-        var audience = _config["Sso:Audience"] ?? "LoxxkingApp";
+        var audience = _config["Sso:Audience"] ?? "LavvaApp";
         var clockSkewSeconds = _config.GetValue<int>("Sso:ClockSkewSeconds", 30);
 
         var tokenValidationParams = new TokenValidationParameters
