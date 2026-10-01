@@ -6,7 +6,7 @@ public record GetMyNotificationsQuery(Guid UserId) : IRequest<Result<List<GetMyN
 
 public record GetMyNotificationsResponse(
     Guid Id,
-    [property: JsonConverter(typeof(JsonStringEnumConverter))] string Type,
+    string Type,
     string Message,
     Guid? RelatedEntityId,
     bool IsRead,

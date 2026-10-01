@@ -84,6 +84,7 @@ public class SubmitReviewHandler : IRequestHandler<SubmitReviewCommand, Result>
                 Message = "أهلاً بك في متجر LAVVA، معك أستاذة فاطمة من الدعم، هنا لمساعدتك.",
                 RelatedReviewId = review.Id,
                 GuestName = "Support",
+                IsStaff = true,
                 ConversationId = conversation.Id
             };
             _context.SupportMessages.Add(supportMessage);

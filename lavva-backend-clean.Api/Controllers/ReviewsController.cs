@@ -28,6 +28,9 @@ public class ReviewsController : ControllerBase
             var userId = userIdStr is not null && Guid.TryParse(userIdStr, out var id) ? (Guid?)id : null;
             return (await _sender.Send(new GetReviewsByProductQuery(productId.Value, userId, guestId), ct)).ToApiResponse();
         }
+
+        // Without a product this is the moderation queue, which is the admin's alone (same as GET /pending).
+        if (!User.IsInRole("Admin")) return StatusCode(StatusCodes.Status403Forbidden);
         return (await _sender.Send(new GetPendingReviewsQuery(), ct)).ToApiResponse();
     }
 

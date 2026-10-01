@@ -43,7 +43,7 @@ public class OrderNotificationService : IOrderNotificationService
 
         if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
         {
-            _logger.LogWarning("Email not configured â€” skipping invoice email for order {OrderNumber}", order.OrderNumber);
+            _logger.LogWarning("Email not configured — skipping invoice email for order {OrderNumber}", order.OrderNumber);
             return;
         }
 
@@ -52,7 +52,7 @@ public class OrderNotificationService : IOrderNotificationService
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(fromName, user));
             message.To.Add(MailboxAddress.Parse(toEmail));
-            message.Subject = $"ðŸ›’ New Order #{order.OrderNumber} â€” {order.TotalAmount:N2} EGP";
+            message.Subject = $"🛒 New Order #{order.OrderNumber} — {order.TotalAmount:N2} EGP";
 
             var builder = new BodyBuilder { HtmlBody = BuildInvoiceHtml(order) };
             if (order.PdfAttachment != null)
@@ -83,7 +83,7 @@ public class OrderNotificationService : IOrderNotificationService
 
         if (string.IsNullOrWhiteSpace(instanceId) || string.IsNullOrWhiteSpace(apiToken))
         {
-            _logger.LogWarning("GreenAPI credentials not configured â€” skipping WhatsApp for order {OrderNumber}", order.OrderNumber);
+            _logger.LogWarning("GreenAPI credentials not configured — skipping WhatsApp for order {OrderNumber}", order.OrderNumber);
             return;
         }
 
@@ -118,43 +118,43 @@ public class OrderNotificationService : IOrderNotificationService
         return countryName.Trim().ToLowerInvariant() switch
         {
             "egypt" => "20",
-            "Ù…ØµØ±" => "20",
+            "مصر" => "20",
             "qatar" => "974",
-            "Ù‚Ø·Ø±" => "974",
+            "قطر" => "974",
             "saudi arabia" => "966",
             "ksa" => "966",
-            "Ø§Ù„Ø³Ø¹ÙˆØ¯ÙŠØ©" => "966",
+            "السعودية" => "966",
             "uae" => "971",
             "united arab emirates" => "971",
-            "Ø§Ù„Ø§Ù…Ø§Ø±Ø§Øª" => "971",
+            "الامارات" => "971",
             "kuwait" => "965",
-            "Ø§Ù„ÙƒÙˆÙŠØª" => "965",
+            "الكويت" => "965",
             "tunisia" => "216",
-            "ØªÙˆÙ†Ø³" => "216",
+            "تونس" => "216",
             "libya" => "218",
-            "Ù„ÙŠØ¨ÙŠØ§" => "218",
+            "ليبيا" => "218",
             "algeria" => "213",
-            "Ø§Ù„Ø¬Ø²Ø§Ø¦Ø±" => "213",
+            "الجزائر" => "213",
             "yemen" => "967",
-            "Ø§Ù„ÙŠÙ…Ù†" => "967",
+            "اليمن" => "967",
             "jordan" => "962",
-            "Ø§Ù„Ø§Ø±Ø¯Ù†" => "962",
+            "الاردن" => "962",
             "syria" => "963",
-            "Ø³ÙˆØ±ÙŠØ§" => "963",
+            "سوريا" => "963",
             "lebanon" => "961",
-            "Ù„Ø¨Ù†Ø§Ù†" => "961",
+            "لبنان" => "961",
             "morocco" => "212",
-            "Ø§Ù„Ù…ØºØ±Ø¨" => "212",
+            "المغرب" => "212",
             "iraq" => "964",
-            "Ø§Ù„Ø¹Ø±Ø§Ù‚" => "964",
+            "العراق" => "964",
             "bahrain" => "973",
-            "Ø§Ù„Ø¨Ø­Ø±ÙŠÙ†" => "973",
+            "البحرين" => "973",
             "oman" => "968",
-            "Ø¹Ù…Ø§Ù†" => "968",
+            "عمان" => "968",
             "palestine" => "970",
-            "ÙÙ„Ø³Ø·ÙŠÙ†" => "970",
+            "فلسطين" => "970",
             "turkey" => "90",
-            "ØªØ±ÙƒÙŠØ§" => "90",
+            "تركيا" => "90",
             _ => ""
         };
     }
@@ -205,64 +205,64 @@ public class OrderNotificationService : IOrderNotificationService
 
     private static string BuildWhatsAppMessage(OrderNotificationData o)
     {
-        var items = string.Join("\n", o.Items.Select(i => $"  â€¢ {i.ProductName} x{i.Quantity} = {i.UnitPrice * i.Quantity:N2} EGP"));
+        var items = string.Join("\n", o.Items.Select(i => $"  • {i.ProductName} x{i.Quantity} = {i.UnitPrice * i.Quantity:N2} EGP"));
         return $"""
-ðŸ›’ *New Order â€” #{o.OrderNumber}*
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
-ðŸ‘¤ Customer: {o.CustomerName}
-ðŸ“± Phone: {o.CustomerPhone}
-ðŸ“ Address: {o.Address}
-ðŸŒ Country: {o.Country}
-ðŸ’³ Payment: {o.PaymentMethod}
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
-ðŸ“¦ *Items:*
+🛒 *New Order — #{o.OrderNumber}*
+━━━━━━━━━━━━━━━━━━━━
+👤 Customer: {o.CustomerName}
+📱 Phone: {o.CustomerPhone}
+📍 Address: {o.Address}
+🌍 Country: {o.Country}
+💳 Payment: {o.PaymentMethod}
+━━━━━━━━━━━━━━━━━━━━
+📦 *Items:*
 {items}
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
-ðŸ’° *Total: {o.TotalAmount:N2} EGP*
-ðŸ•’ {o.CreatedAt:dd MMM yyyy HH:mm} UTC
+━━━━━━━━━━━━━━━━━━━━
+💰 *Total: {o.TotalAmount:N2} EGP*
+🕒 {o.CreatedAt:dd MMM yyyy HH:mm} UTC
 """;
     }
 
     private static string BuildCustomerWhatsAppMessage(OrderNotificationData o)
     {
         var isArabic = o.Language.StartsWith("ar", StringComparison.OrdinalIgnoreCase);
-        var items = string.Join("\n", o.Items.Select(i => $"  â€¢ {i.ProductName} x{i.Quantity}"));
+        var items = string.Join("\n", o.Items.Select(i => $"  • {i.ProductName} x{i.Quantity}"));
 
         if (isArabic)
         {
             return $"""
-ðŸŽ‰ *Ø´ÙƒØ±Ø§Ù‹ Ù„Ø·Ù„Ø¨Ùƒ Ù…Ù† LAVVA!*
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
-Ø£Ù‡Ù„Ø§Ù‹ Ø¨Ùƒ {o.CustomerName}ØŒ
-ØªÙ… Ø§Ø³ØªÙ„Ø§Ù… Ø·Ù„Ø¨Ùƒ Ø¨Ù†Ø¬Ø§Ø­ØŒ Ø±Ù‚Ù… Ø§Ù„Ø·Ù„Ø¨ Ø§Ù„Ø®Ø§Øµ Ø¨Ùƒ Ù‡Ùˆ: *#{o.OrderNumber}*
+🎉 *شكراً لطلبك من LAVVA!*
+━━━━━━━━━━━━━━━━━━━━
+أهلاً بك {o.CustomerName}،
+تم استلام طلبك بنجاح، رقم الطلب الخاص بك هو: *#{o.OrderNumber}*
 
-Ù…Ø±ÙÙ‚ Ù…Ø¹ Ù‡Ø°Ù‡ Ø§Ù„Ø±Ø³Ø§Ù„Ø© Ø¥ÙŠØµØ§Ù„ Ø§Ù„Ø¯ÙØ¹ Ø¨ØµÙŠØºØ© PDF.
+مرفق مع هذه الرسالة إيصال الدفع بصيغة PDF.
 
-ðŸ“¦ *Ù…Ø´ØªØ±ÙŠØ§ØªÙƒ:*
+📦 *مشترياتك:*
 {items}
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
-ðŸ’° *Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ: {o.TotalAmount:N2} EGP*
+━━━━━━━━━━━━━━━━━━━━
+💰 *الإجمالي: {o.TotalAmount:N2} EGP*
 
-Ø³ÙŠØªÙ… Ø§Ù„ØªÙˆØ§ØµÙ„ Ù…Ø¹Ùƒ Ù‚Ø±ÙŠØ¨Ø§Ù‹ Ù„ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø´Ø­Ù†.
-Ù†ØªÙ…Ù†Ù‰ Ù„Ùƒ ÙŠÙˆÙ…Ø§Ù‹ Ø³Ø¹ÙŠØ¯Ø§Ù‹! ðŸ‘‘
+سيتم التواصل معك قريباً لتأكيد الشحن.
+نتمنى لك يوماً سعيداً! 👑
 """;
         }
 
         return $"""
-ðŸŽ‰ *Thank you for your order from LAVVA!*
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+🎉 *Thank you for your order from LAVVA!*
+━━━━━━━━━━━━━━━━━━━━
 Hello {o.CustomerName},
 Your order has been placed successfully. Your order number is: *#{o.OrderNumber}*
 
 Attached to this message is your payment receipt in PDF format.
 
-ðŸ“¦ *Your Items:*
+📦 *Your Items:*
 {items}
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
-ðŸ’° *Total: {o.TotalAmount:N2} EGP*
+━━━━━━━━━━━━━━━━━━━━
+💰 *Total: {o.TotalAmount:N2} EGP*
 
 Our team will contact you shortly to confirm shipping.
-Have a wonderful day! ðŸ‘‘
+Have a wonderful day! 👑
 """;
     }
 

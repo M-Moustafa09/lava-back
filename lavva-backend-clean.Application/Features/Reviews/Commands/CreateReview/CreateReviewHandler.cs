@@ -90,6 +90,7 @@ public class CreateReviewHandler : IRequestHandler<CreateReviewCommand, Result<C
                 Message = "أهلاً بك في متجر LAVVA، معك أستاذة فاطمة من الدعم، هنا لمساعدتك.",
                 RelatedReviewId = review.Id,
                 GuestName = "Support",
+                IsStaff = true,
                 ConversationId = conversation.Id,
                 IsRead = false
             };
@@ -121,6 +122,7 @@ public class CreateReviewHandler : IRequestHandler<CreateReviewCommand, Result<C
                     Message = "أهلاً بك في متجر LAVVA، معك أستاذة فاطمة من الدعم، هنا لمساعدتك.",
                     RelatedReviewId = review.Id,
                     GuestName = "Support",
+                    IsStaff = true,
                     ConversationId = conversation.Id,
                     IsRead = false
                 };

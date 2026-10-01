@@ -17,7 +17,7 @@ public class GetPendingTransfersHandler : IRequestHandler<GetPendingTransfersQue
             .Select(bt => new GetPendingTransfersResponse(
                 bt.Id,
                 bt.OrderId,
-                bt.Order.Customer != null ? bt.Order.Customer.Name : "Guest",
+                !string.IsNullOrEmpty(bt.Order.GuestName) ? bt.Order.GuestName : (bt.Order.Customer != null ? bt.Order.Customer.Name : "Guest"),
                 bt.ProofImageUrl,
                 bt.SubmittedAt
             ))

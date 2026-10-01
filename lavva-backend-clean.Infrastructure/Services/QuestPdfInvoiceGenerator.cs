@@ -38,6 +38,8 @@ public class QuestPdfInvoiceGenerator : IInvoicePdfGenerator
     {
         var lang = invoice.Order?.Customer?.PreferredLanguage ?? CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
         var isArabic = lang.StartsWith("ar", StringComparison.OrdinalIgnoreCase);
+        var currency = invoice.Order?.Currency ?? string.Empty;
+        string Amount(decimal value) => $"{value.ToString("0.##", CultureInfo.InvariantCulture)} {currency}".Trim();
 
         string T(string key, string enFallback, string arFallback)
         {
@@ -66,8 +68,8 @@ public class QuestPdfInvoiceGenerator : IInvoicePdfGenerator
 
                 page.Header()
                     .AlignCenter()
-                    .Text($"{T("Invoice_Header", "INVOICE", "ÙØ§ØªÙˆØ±Ø©")}: {invoice.InvoiceNumber}")
-                    .SemiBold().FontSize(20).FontColor(Colors.Blue.Darken2);
+                    .Text($"LAVVA — {T("Invoice_Header", "INVOICE", "فاتورة")}: {invoice.InvoiceNumber}")
+                    .SemiBold().FontSize(20).FontColor("#2A5841");
 
                 page.Content()
                     .PaddingVertical(1, Unit.Centimetre)
@@ -77,34 +79,34 @@ public class QuestPdfInvoiceGenerator : IInvoicePdfGenerator
                         {
                             row.RelativeItem().Column(col2 =>
                             {
-                                col2.Item().Text($"{T("Invoice_Number", "Invoice Number", "Ø±Ù‚Ù… Ø§Ù„ÙØ§ØªÙˆØ±Ø©")}: {invoice.InvoiceNumber}");
-                                col2.Item().Text($"{T("Invoice_Date", "Date", "Ø§Ù„ØªØ§Ø±ÙŠØ®")}: {invoice.IssuedAt:dd/MM/yyyy HH:mm}");
-                                col2.Item().Text($"{T("Invoice_Order", "Order", "Ø§Ù„Ø·Ù„Ø¨")}: {invoice.Order?.OrderNumber ?? invoice.OrderId.ToString()[..8]}");
+                                col2.Item().Text($"{T("Invoice_Number", "Invoice Number", "رقم الفاتورة")}: {invoice.InvoiceNumber}");
+                                col2.Item().Text($"{T("Invoice_Date", "Date", "التاريخ")}: {invoice.IssuedAt:dd/MM/yyyy HH:mm}");
+                                col2.Item().Text($"{T("Invoice_Order", "Order", "الطلب")}: {invoice.Order?.OrderNumber ?? invoice.OrderId.ToString()[..8]}");
                                 if (invoice.Order?.Country != null)
-                                    col2.Item().Text($"{T("Invoice_Country", "Country", "Ø§Ù„Ø¯ÙˆÙ„Ø©")}: {invoice.Order.Country.Name}");
+                                    col2.Item().Text($"{T("Invoice_Country", "Country", "الدولة")}: {invoice.Order.Country.Name}");
                             });
 
                             row.RelativeItem().Column(col2 =>
                             {
-                                col2.Item().Text(T("Invoice_CustomerInfo", "Customer Information:", "Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¹Ù…ÙŠÙ„:")).Bold();
+                                col2.Item().Text(T("Invoice_CustomerInfo", "Customer Information:", "بيانات العميل:")).Bold();
                                 if (invoice.Order?.Customer != null)
                                 {
-                                    col2.Item().Text($"{T("Invoice_CustomerName", "Name", "Ø§Ù„Ø§Ø³Ù…")}: {invoice.Order.Customer.Name}");
-                                    col2.Item().Text($"{T("Invoice_CustomerEmail", "Email", "Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ")}: {invoice.Order.Customer.Email}");
-                                    col2.Item().Text($"{T("Invoice_CustomerPhone", "Phone", "Ø§Ù„Ù‡Ø§ØªÙ")}: {invoice.Order.Customer.Phone}");
+                                    col2.Item().Text($"{T("Invoice_CustomerName", "Name", "الاسم")}: {invoice.Order.Customer.Name}");
+                                    col2.Item().Text($"{T("Invoice_CustomerEmail", "Email", "البريد الإلكتروني")}: {invoice.Order.Customer.Email}");
+                                    col2.Item().Text($"{T("Invoice_CustomerPhone", "Phone", "الهاتف")}: {invoice.Order.Customer.Phone}");
                                 }
                                 else if (invoice.Order != null)
                                 {
-                                    var guestName = invoice.Order.GuestName ?? invoice.Order.Phone ?? (isArabic ? "Ø²Ø§Ø¦Ø±" : "Guest");
+                                    var guestName = invoice.Order.GuestName ?? invoice.Order.Phone ?? (isArabic ? "زائر" : "Guest");
                                     var guestPhone = invoice.Order.GuestPhone ?? invoice.Order.Phone ?? "-";
                                     var guestAddr = invoice.Order.GuestAddress ?? invoice.Order.Address ?? "-";
-                                    col2.Item().Text($"{T("Invoice_CustomerName", "Name", "Ø§Ù„Ø§Ø³Ù…")}: {guestName}");
-                                    col2.Item().Text($"{T("Invoice_CustomerPhone", "Phone", "Ø§Ù„Ù‡Ø§ØªÙ")}: {guestPhone}");
-                                    col2.Item().Text($"{T("Invoice_CustomerAddress", "Address", "Ø§Ù„Ø¹Ù†ÙˆØ§Ù†")}: {guestAddr}");
+                                    col2.Item().Text($"{T("Invoice_CustomerName", "Name", "الاسم")}: {guestName}");
+                                    col2.Item().Text($"{T("Invoice_CustomerPhone", "Phone", "الهاتف")}: {guestPhone}");
+                                    col2.Item().Text($"{T("Invoice_CustomerAddress", "Address", "العنوان")}: {guestAddr}");
                                 }
                                 else
                                 {
-                                    col2.Item().Text(T("Invoice_GuestOrder", "Guest Order", "Ø·Ù„Ø¨ Ø²Ø§Ø¦Ø±"));
+                                    col2.Item().Text(T("Invoice_GuestOrder", "Guest Order", "طلب زائر"));
                                 }
                             });
                         });
@@ -124,10 +126,10 @@ public class QuestPdfInvoiceGenerator : IInvoicePdfGenerator
 
                             table.Header(header =>
                             {
-                                header.Cell().Background(Colors.Grey.Lighten2).Padding(5).Text(T("Invoice_TableProduct", "Product", "Ø§Ù„Ù…Ù†ØªØ¬")).Bold();
-                                header.Cell().Background(Colors.Grey.Lighten2).Padding(5).Text(T("Invoice_TableQty", "Qty", "Ø§Ù„ÙƒÙ…ÙŠØ©")).Bold().AlignRight();
-                                header.Cell().Background(Colors.Grey.Lighten2).Padding(5).Text(T("Invoice_TableUnitPrice", "Unit Price", "Ø³Ø¹Ø± Ø§Ù„ÙˆØ­Ø¯Ø©")).Bold().AlignRight();
-                                header.Cell().Background(Colors.Grey.Lighten2).Padding(5).Text(T("Invoice_TableTotal", "Total", "Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ")).Bold().AlignRight();
+                                header.Cell().Background(Colors.Grey.Lighten2).Padding(5).Text(T("Invoice_TableProduct", "Product", "المنتج")).Bold();
+                                header.Cell().Background(Colors.Grey.Lighten2).Padding(5).Text(T("Invoice_TableQty", "Qty", "الكمية")).Bold().AlignRight();
+                                header.Cell().Background(Colors.Grey.Lighten2).Padding(5).Text(T("Invoice_TableUnitPrice", "Unit Price", "سعر الوحدة")).Bold().AlignRight();
+                                header.Cell().Background(Colors.Grey.Lighten2).Padding(5).Text(T("Invoice_TableTotal", "Total", "الإجمالي")).Bold().AlignRight();
                             });
 
                             if (invoice.Order?.OrderItems != null && invoice.Order.OrderItems.Any())
@@ -136,18 +138,18 @@ public class QuestPdfInvoiceGenerator : IInvoicePdfGenerator
                                 {
                                     var totalPrice = item.Quantity * item.PriceAtOrder;
                                     var productName = isArabic 
-                                        ? (!string.IsNullOrWhiteSpace(item.Product?.NameAr) ? item.Product.NameAr : (item.Product?.NameEn ?? "Ù…Ù†ØªØ¬"))
+                                        ? (!string.IsNullOrWhiteSpace(item.Product?.NameAr) ? item.Product.NameAr : (item.Product?.NameEn ?? "منتج"))
                                         : (!string.IsNullOrWhiteSpace(item.Product?.NameEn) ? item.Product.NameEn : (item.Product?.NameAr ?? "Product"));
                                     
                                     table.Cell().Padding(5).Text(productName);
                                     table.Cell().Padding(5).Text(item.Quantity.ToString()).AlignRight();
-                                    table.Cell().Padding(5).Text($"{item.PriceAtOrder:C}").AlignRight();
-                                    table.Cell().Padding(5).Text($"{totalPrice:C}").AlignRight();
+                                    table.Cell().Padding(5).Text(Amount(item.PriceAtOrder)).AlignRight();
+                                    table.Cell().Padding(5).Text(Amount(totalPrice)).AlignRight();
                                 }
                             }
                             else
                             {
-                                table.Cell().Padding(5).Text(T("Invoice_NoItems", "No items loaded", "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¹Ù†Ø§ØµØ±"));
+                                table.Cell().Padding(5).Text(T("Invoice_NoItems", "No items loaded", "لا توجد عناصر"));
                                 table.Cell().Padding(5).Text("-");
                                 table.Cell().Padding(5).Text("-");
                                 table.Cell().Padding(5).Text("-");
@@ -156,13 +158,13 @@ public class QuestPdfInvoiceGenerator : IInvoicePdfGenerator
 
                         col.Item().PaddingTop(1, Unit.Centimetre)
                             .AlignRight()
-                            .Text($"{T("Invoice_TotalAmount", "Total Amount", "Ø§Ù„Ù…Ø¨Ù„Øº Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ")}: {invoice.TotalAmount:C}")
+                            .Text($"{T("Invoice_TotalAmount", "Total Amount", "المبلغ الإجمالي")}: {Amount(invoice.TotalAmount.Value)}")
                             .SemiBold().FontSize(16).FontColor(Colors.Green.Darken2);
                     });
 
                 page.Footer()
                     .AlignCenter()
-                    .Text(T("Invoice_ThankYou", "Thank you for your business!", "Ø´ÙƒØ±Ø§Ù‹ Ù„ØªØ¹Ø§Ù…Ù„ÙƒÙ… Ù…Ø¹Ù†Ø§!"))
+                    .Text(T("Invoice_ThankYou", "Thank you for your business!", "شكراً لتعاملكم معنا!"))
                     .FontSize(10).FontColor(Colors.Grey.Medium);
             });
         });

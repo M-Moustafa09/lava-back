@@ -58,7 +58,9 @@ public class SupportChatController : ControllerBase
         var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value ?? User.FindFirst("nameid")?.Value;
         var userId = userIdStr is not null && Guid.TryParse(userIdStr, out var id) ? id : Guid.Empty;
         var text = input.Text ?? input.Message ?? "";
-        return (await _sender.Send(new SendMessageCommand(conversationId, text, userId, input.GuestName ?? input.Sender, false, guestId, input.ClientMessageId, input.AttachmentUrl), ct)).ToApiResponse();
+        // A store employee answering from the dashboard writes as support, not as the customer.
+        var isStaff = User.IsInRole("Admin") || User.IsInRole("StoreManager") || User.IsInRole("SalesEmployee");
+        return (await _sender.Send(new SendMessageCommand(conversationId, text, userId, input.GuestName ?? input.Sender, isStaff, guestId, input.ClientMessageId, input.AttachmentUrl), ct)).ToApiResponse();
     }
 
     [HttpPost("upload")]

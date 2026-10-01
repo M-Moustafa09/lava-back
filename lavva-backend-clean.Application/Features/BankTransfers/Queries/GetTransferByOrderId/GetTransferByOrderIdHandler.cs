@@ -23,7 +23,7 @@ public class GetTransferByOrderIdHandler : IRequestHandler<GetTransferByOrderIdQ
                 bt.ReviewedAt,
                 bt.RejectionReason,
                 CustomerId = bt.Order.CustomerId,
-                CustomerName = bt.Order.Customer != null ? bt.Order.Customer.Name : "Guest"
+                CustomerName = !string.IsNullOrEmpty(bt.Order.GuestName) ? bt.Order.GuestName : (bt.Order.Customer != null ? bt.Order.Customer.Name : "Guest")
             })
             .FirstOrDefaultAsync(cancellationToken);
 

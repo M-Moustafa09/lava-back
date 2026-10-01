@@ -12,7 +12,7 @@ public class LocalFileStorageService : IFileStorageService
     public LocalFileStorageService(IWebHostEnvironment env, IConfiguration configuration)
     {
         _env = env;
-        _baseUrl = configuration["App:BaseUrl"] ?? "http://localhost:5050";
+        _baseUrl = configuration["App:BaseUrl"] ?? "http://localhost:5000";
     }
 
     public async Task<string> UploadAsync(Stream stream, string fileName, string contentType, string folder, CancellationToken cancellationToken)
@@ -54,7 +54,7 @@ public class LocalFileStorageService : IFileStorageService
             await stream.CopyToAsync(fileStream, cancellationToken);
         }
 
-        var baseUri = string.IsNullOrWhiteSpace(_baseUrl) ? "http://localhost:5050" : _baseUrl.TrimEnd('/');
+        var baseUri = string.IsNullOrWhiteSpace(_baseUrl) ? "http://localhost:5000" : _baseUrl.TrimEnd('/');
         return $"{baseUri}/uploads/{folder}/{uniqueFileName}";
     }
 
