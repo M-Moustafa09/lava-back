@@ -1,0 +1,37 @@
+using lavva_backend_clean.Api.Hubs;
+using lavva_backend_clean.Application.Common.Interfaces;
+using Microsoft.AspNetCore.SignalR;
+
+namespace lavva_backend_clean.Api.Services;
+
+public class SupportNotificationService : ISupportNotificationService
+{
+    private readonly IHubContext<ChatHub> _hubContext;
+
+    public SupportNotificationService(IHubContext<ChatHub> hubContext)
+    {
+        _hubContext = hubContext;
+    }
+
+    public async Task NotifyMessageReceivedAsync(
+        string conversationId,
+        Guid? userId,
+        string? userName,
+        string message,
+        DateTime timestamp,
+        string? attachmentUrl = null,
+        bool isStaff = false,
+        string senderType = "Customer")
+    {
+        await _hubContext.Clients.Group($"conversation_{conversationId}").SendAsync("ReceiveMessage", new
+        {
+            userId,
+            userName,
+            message,
+            timestamp,
+            attachmentUrl,
+            isStaff,
+            senderType
+        });
+    }
+}

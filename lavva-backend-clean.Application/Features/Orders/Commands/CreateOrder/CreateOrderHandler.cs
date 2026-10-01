@@ -1,0 +1,262 @@
+using lavva_backend_clean.Domain.Entities.Orders;
+using lavva_backend_clean.Domain.Entities.Invoices;
+using lavva_backend_clean.Application.Features.Offers;
+using lavva_backend_clean.Application.Features.Orders.CheckoutCities;
+
+namespace lavva_backend_clean.Application.Features.Orders.Commands.CreateOrder;
+
+public class CreateOrderHandler : IRequestHandler<CreateOrderCommand, Result<CreateOrderResponse>>
+{
+    private static readonly SemaphoreSlim _orderNumberLock = new(1, 1);
+    private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IInvoicePdfGenerator _pdfGenerator;
+    private readonly IOrderNotificationService _notificationService;
+    private readonly Microsoft.Extensions.Caching.Distributed.IDistributedCache _cache;
+    private readonly ICheckoutCityDirectory _cities;
+
+    public CreateOrderHandler(
+        IApplicationDbContext context,
+        ICurrentUserService currentUserService,
+        IInvoicePdfGenerator pdfGenerator,
+        IOrderNotificationService notificationService,
+        Microsoft.Extensions.Caching.Distributed.IDistributedCache cache,
+        ICheckoutCityDirectory cities)
+    {
+        _context = context;
+        _currentUserService = currentUserService;
+        _pdfGenerator = pdfGenerator;
+        _notificationService = notificationService;
+        _cache = cache;
+        _cities = cities;
+    }
+
+    public async Task<Result<CreateOrderResponse>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
+    {
+        if (request.Items == null || !request.Items.Any())
+            return Result.Failure<CreateOrderResponse>(new Error("Error.Validation", "Order_EmptyItems"));
+
+        var currentUserId = _currentUserService.UserId;
+
+        if (currentUserId != Guid.Empty)
+        {
+            var userExists = await _context.Users.AnyAsync(u => u.Id == currentUserId, cancellationToken);
+            if (!userExists)
+            {
+                currentUserId = Guid.Empty;
+            }
+        }
+
+        // The order country is the country whose prices the customer was shown and chose at
+        // checkout — one of the store's countries (per-country pricing, 2026-09-21). It is no longer
+        // guessed: checkout used to send a translation key as the country name, so every guest
+        // order fell through to the default country (Egypt). Each line is priced at that country's
+        // price and the order carries its currency.
+        var countryEntity = request.CountryId is Guid requestedCountryId && requestedCountryId != Guid.Empty
+            ? await _context.Countries.FirstOrDefaultAsync(c => c.Id == requestedCountryId && c.IsActive && !c.IsDeleted, cancellationToken)
+            : null;
+        if (countryEntity is null)
+            return Result.Failure<CreateOrderResponse>(new Error("Error.Validation", "Order_CountryNotSold"));
+
+        Guid? finalCountryId = countryEntity.Id;
+        var resolvedCountryName = countryEntity.Name;
+
+        var city = await ResolveCityAsync(request.City, countryEntity.Id, cancellationToken);
+
+        if (StorePaymentMethod(request.PaymentMethod) is not PaymentMethod paymentMethod)
+            return Result.Failure<CreateOrderResponse>(new Error("Error.Validation", "Order_PaymentMethodNotSupported"));
+
+        Order order;
+        Invoice invoice;
+        var notificationItems = new List<OrderNotificationItem>();
+
+        await _orderNumberLock.WaitAsync(cancellationToken);
+        try
+        {
+            var year = DateTime.UtcNow.Year;
+            var orderNumber = await GenerateOrderNumberAsync(year, cancellationToken);
+
+            order = Order.Create(
+                currentUserId != Guid.Empty ? currentUserId : null,
+                finalCountryId.Value,
+                orderNumber,
+                request.Address,
+                request.Phone,
+                request.Notes,
+                paymentMethod,
+                request.GuestName,
+                null, // guestPhone
+                null, // guestAddress
+                countryEntity.Currency,
+                city,
+                request.Area
+            );
+
+            // A running offer takes its percentage off the country price (owner decision 2026-09-22),
+            // read from the same place the storefront shows it from, so the customer pays what they saw.
+            var offers = await ActiveOffers.GetAsync(_context, _cache, cancellationToken);
+
+            using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+            foreach (var itemDto in request.Items)
+            {
+                var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == itemDto.ProductId, cancellationToken);
+                if (product == null) continue;
+
+                var countryPrice = await CountryPriceAsync(product.Id, finalCountryId.Value, cancellationToken);
+                if (countryPrice is not decimal price)
+                    return Result.Failure<CreateOrderResponse>(new Error("Error.Validation", "Order_ProductNotSoldInCountry"));
+                if (offers.TryGetValue(product.Id, out var offer))
+                    price = ActiveOffers.Apply(price, offer.Percent);
+
+                // Stock is not tracked (owner decision 2026-09-24): a product sold in the order country
+                // is always orderable. Products added from the dashboard have no inventory rows, and the
+                // old stock check refused every order for them.
+                order.AddItem(product.Id, itemDto.Quantity, lavva_backend_clean.Domain.ValueObjects.Money.FromDecimal(price));
+
+                notificationItems.Add(new OrderNotificationItem(product.NameEn, itemDto.Quantity, price));
+            }
+
+            invoice = Invoice.Create(
+                order.Id,
+                $"INV-{order.OrderNumber}",
+                order.TotalAmount
+            );
+
+            _context.Orders.Add(order);
+            _context.Invoices.Add(invoice);
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        finally
+        {
+            _orderNumberLock.Release();
+        }
+
+        foreach (var itemDto in request.Items)
+        {
+            await _cache.RemoveAsync($"ProductDetail_{itemDto.ProductId}_ar", cancellationToken);
+            await _cache.RemoveAsync($"ProductDetail_{itemDto.ProductId}_en", cancellationToken);
+        }
+
+        await ProcessInvoicesAndNotificationsAsync(order, invoice, request, currentUserId, resolvedCountryName, notificationItems, cancellationToken);
+
+        return Result.Success(new CreateOrderResponse(order.Id, order.OrderNumber, order.TotalAmount.Value, finalCountryId.Value, order.Currency));
+    }
+
+    /// <summary>
+    /// The store takes cash on delivery and bank transfer only; no card or wallet payment is
+    /// processed, so any other method is refused rather than recorded as paid. The storefront sent
+    /// 1 for cash on delivery until 2026-09-24, and 1 is DebitCard in this enum: every cash order
+    /// was saved, shown to the customer and sent to the CRM as a card payment. A storefront still
+    /// cached in a browser keeps sending 1, so it is read as the cash on delivery it always meant.
+    /// </summary>
+    private static PaymentMethod? StorePaymentMethod(PaymentMethod requested) => requested switch
+    {
+        PaymentMethod.CashOnDelivery or PaymentMethod.BankTransfer => requested,
+        PaymentMethod.DebitCard => PaymentMethod.CashOnDelivery,
+        _ => null
+    };
+
+    /// <summary>
+    /// The city as the CRM spells it when the customer's text clearly means one of the CRM's cities
+    /// («اسكندريه» → «الإسكندرية»), so the CRM can pick the courier; otherwise the text as typed.
+    /// The CRM list is cached; when it cannot be read the order still goes through.
+    /// </summary>
+    private async Task<string?> ResolveCityAsync(string? typed, Guid countryId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(typed)) return typed;
+        var cities = await _cities.GetCitiesAsync(countryId, cancellationToken);
+        return cities is null ? typed : CheckoutCityMatcher.Match(typed, cities) ?? typed;
+    }
+
+    /// <summary>
+    /// The product's price in the order country, or null when it has none there. There is no
+    /// fallback: the storefront never offers a product without the visitor's price, and the old
+    /// fallback (any other country's price, then the EGP base price) charged the wrong amount.
+    /// </summary>
+    private Task<decimal?> CountryPriceAsync(Guid productId, Guid countryId, CancellationToken cancellationToken) =>
+        _context.ProductPrices
+            .Where(p => p.ProductId == productId && p.CountryId == countryId)
+            .Select(p => (decimal?)p.Price)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private async Task ProcessInvoicesAndNotificationsAsync(Order order, Invoice invoice, CreateOrderCommand request, Guid currentUserId, string? resolvedCountryName, List<OrderNotificationItem> notificationItems, CancellationToken cancellationToken)
+    {
+        byte[]? pdfAttachment = null;
+        try
+        {
+            pdfAttachment = await _pdfGenerator.GeneratePdfAsync(invoice, cancellationToken);
+        }
+        catch (Exception)
+        {
+        }
+
+        var customerUser = currentUserId != Guid.Empty 
+            ? await _context.Users.FindAsync(new object?[] { currentUserId }, cancellationToken: cancellationToken)
+            : null;
+        var customerName = customerUser?.Name ?? request.GuestName ?? "Customer";
+        var customerLang = customerUser?.PreferredLanguage ?? (System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName.StartsWith("ar", StringComparison.OrdinalIgnoreCase) ? "ar" : "en");
+
+        var notifData = new OrderNotificationData(
+            order.OrderNumber,
+            customerName,
+            order.Phone ?? "",
+            order.Address ?? "",
+            resolvedCountryName ?? "",
+            order.PaymentMethod.ToString(),
+            order.TotalAmount.Value,
+            notificationItems,
+            order.CreatedAt,
+            pdfAttachment,
+            customerLang
+        );
+
+        _ = _notificationService.NotifyNewOrderAsync(notifData, CancellationToken.None)
+            .ContinueWith(t => 
+            {
+                if (t.IsFaulted && t.Exception != null)
+                {
+                    Console.WriteLine($"[CRITICAL] Order notification background task failed for order {order.OrderNumber}: {t.Exception.Flatten().Message}");
+                }
+            }, TaskContinuationOptions.OnlyOnFaulted);
+    }
+
+    private async Task<string> GenerateOrderNumberAsync(int year, CancellationToken cancellationToken)
+    {
+        var prefix = $"ORD-{year}-";
+
+        var candidates = await _context.Orders
+            .IgnoreQueryFilters()
+            .Where(o => o.OrderNumber != null && o.OrderNumber.StartsWith(prefix))
+            .OrderByDescending(o => o.OrderNumber.Length)
+            .ThenByDescending(o => o.OrderNumber)
+            .Select(o => o.OrderNumber)
+            .Take(50)
+            .ToListAsync(cancellationToken);
+
+        int maxSequence = 0;
+        foreach (var candidate in candidates)
+        {
+            if (candidate.Length > prefix.Length)
+            {
+                var suffix = candidate.Substring(prefix.Length);
+                if (int.TryParse(suffix, out var seq) && seq > maxSequence)
+                {
+                    maxSequence = seq;
+                }
+            }
+        }
+
+        var nextSequence = maxSequence + 1;
+        var orderNumber = $"{prefix}{nextSequence:D4}";
+
+        while (await _context.Orders.IgnoreQueryFilters().AnyAsync(o => o.OrderNumber == orderNumber, cancellationToken))
+        {
+            nextSequence++;
+            orderNumber = $"{prefix}{nextSequence:D4}";
+        }
+
+        return orderNumber;
+    }
+}

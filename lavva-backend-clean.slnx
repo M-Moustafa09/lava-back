@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Test/">
+    <Project Path="Test/lavva-backend-clean.Api.IntegrationTests/lavva-backend-clean.Api.IntegrationTests.csproj" />
+    <Project Path="Test/lavva-backend-clean.Application.Tests/lavva-backend-clean.Application.Tests.csproj" />
+  </Folder>
+  <Project Path="lavva-backend-clean.Api/lavva-backend-clean.Api.csproj" />
+  <Project Path="lavva-backend-clean.Application/lavva-backend-clean.Application.csproj" />
+  <Project Path="lavva-backend-clean.Domain/lavva-backend-clean.Domain.csproj" />
+  <Project Path="lavva-backend-clean.Infrastructure/lavva-backend-clean.Infrastructure.csproj" />
+  <Project Path="lavva-backend-clean.Shared/lavva-backend-clean.Shared.csproj" />
+</Solution>
