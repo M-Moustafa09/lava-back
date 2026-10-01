@@ -4,7 +4,7 @@ namespace lavva_backend_clean.Application.Common.Interfaces;
 
 public class CrmOrderSyncDto
 {
-    public Guid LoxxkingOrderId { get; set; }
+    public Guid LavvaOrderId { get; set; }
     public string OrderNumber { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
@@ -43,8 +43,8 @@ public interface ILegacyCrmSyncService
 
     /// <summary>
     /// Hands the customer's bank-transfer receipt to the CRM, which attaches it to the order already synced
-    /// from <paramref name="loxxkingOrderId"/>. Error code <c>ReceiptRejected</c>: the CRM will not take this
+    /// from <paramref name="lavvaOrderId"/>. Error code <c>ReceiptRejected</c>: the CRM will not take this
     /// file however often it is sent (not an image, too large).
     /// </summary>
-    Task<Result> SendBankTransferReceiptAsync(Guid loxxkingOrderId, Stream receipt, string fileName, string contentType, CancellationToken cancellationToken = default);
+    Task<Result> SendBankTransferReceiptAsync(Guid lavvaOrderId, Stream receipt, string fileName, string contentType, CancellationToken cancellationToken = default);
 }

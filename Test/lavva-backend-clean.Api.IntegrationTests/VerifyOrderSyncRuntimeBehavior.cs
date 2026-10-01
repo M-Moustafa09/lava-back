@@ -42,10 +42,10 @@ public class VerifyOrderSyncRuntimeBehavior
         public List<(Guid OrderId, string FileName, string ContentType)> Receipts { get; } = new();
         public Error? ReceiptError { get; set; }
 
-        public Task<Result> SendBankTransferReceiptAsync(Guid loxxkingOrderId, Stream receipt, string fileName, string contentType, CancellationToken cancellationToken = default)
+        public Task<Result> SendBankTransferReceiptAsync(Guid lavvaOrderId, Stream receipt, string fileName, string contentType, CancellationToken cancellationToken = default)
         {
             if (LinkError is { } linkError) return Task.FromResult(Result.Failure(linkError));
-            Receipts.Add((loxxkingOrderId, fileName, contentType));
+            Receipts.Add((lavvaOrderId, fileName, contentType));
             return Task.FromResult(ReceiptError is { } error ? Result.Failure(error) : Result.Success());
         }
     }
@@ -73,7 +73,7 @@ public class VerifyOrderSyncRuntimeBehavior
             return Task.FromResult(Result.Success(new CrmSyncResponse { Success = true, LegacyCrmOrderId = 1 }));
         }
 
-        public Task<Result> SendBankTransferReceiptAsync(Guid loxxkingOrderId, Stream receipt, string fileName, string contentType, CancellationToken cancellationToken = default)
+        public Task<Result> SendBankTransferReceiptAsync(Guid lavvaOrderId, Stream receipt, string fileName, string contentType, CancellationToken cancellationToken = default)
             => Task.FromResult(Result.Success());
     }
 

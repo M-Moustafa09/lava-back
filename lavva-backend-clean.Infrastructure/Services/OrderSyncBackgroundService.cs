@@ -254,7 +254,7 @@ public class OrderSyncBackgroundService : BackgroundService
 
     private static CrmOrderSyncDto ToSyncDto(Domain.Entities.Orders.Order order) => new()
     {
-        LoxxkingOrderId = order.Id,
+        LavvaOrderId = order.Id,
         OrderNumber = order.OrderNumber,
         CustomerName = order.Customer?.Name ?? order.GuestName ?? "Unknown",
         Phone = order.Phone,
