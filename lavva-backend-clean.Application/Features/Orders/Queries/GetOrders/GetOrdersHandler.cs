@@ -29,6 +29,7 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, Result<GetOrders
                 o.Phone.ToLower().Contains(s) ||
                 o.Address.ToLower().Contains(s) ||
                 (o.ShipmentCode != null && o.ShipmentCode.ToLower().Contains(s)) ||
+                (o.GuestName != null && o.GuestName.ToLower().Contains(s)) ||
                 (o.Customer != null && o.Customer.Name.ToLower().Contains(s)));
         }
 
@@ -42,10 +43,11 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, Result<GetOrders
             {
                 o.Id,
                 o.OrderNumber,
-                CustomerName = o.Customer != null ? o.Customer.Name : (o.GuestName ?? "Guest"),
+                CustomerName = !string.IsNullOrEmpty(o.GuestName) ? o.GuestName : (o.Customer != null ? o.Customer.Name : "Guest"),
                 o.Phone,
                 o.Address,
                 Country = o.Country.Name,
+                CountryCode = o.Country.Code,
                 Status = o.Status.ToString(),
                 PaymentMethod = o.PaymentMethod.ToString(),
                 PaymentStatus = o.PaymentStatus.ToString(),
@@ -104,6 +106,7 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, Result<GetOrders
             o.Phone,
             o.Address,
             o.Country,
+            o.CountryCode,
             o.Status,
             o.PaymentMethod,
             o.PaymentStatus,

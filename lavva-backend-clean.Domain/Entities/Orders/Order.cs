@@ -128,6 +128,41 @@ public class Order : BaseEntity {
         ShipmentCode = string.IsNullOrWhiteSpace(shipmentCode) ? null : shipmentCode.Trim();
     }
 
+    /// <summary>What the dashboard's «تعديل الطلب» form edits. The country is not here: it fixes the currency and every line price.</summary>
+    public void UpdateEditableDetails(
+        string? customerName,
+        string phone,
+        string address,
+        string? shipmentCode,
+        string? city,
+        string? area,
+        string? deliveryCompany,
+        string? notes)
+    {
+        UpdateDetails(phone, address, shipmentCode);
+        GuestName = string.IsNullOrWhiteSpace(customerName) ? GuestName : customerName.Trim();
+        City = (city ?? string.Empty).Trim();
+        Area = (area ?? string.Empty).Trim();
+        DeliveryCompany = (deliveryCompany ?? string.Empty).Trim();
+        Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ChangePaymentMethod(PaymentMethod paymentMethod)
+    {
+        PaymentMethod = paymentMethod;
+    }
+
+    public void ReplaceItems(IEnumerable<(Guid ProductId, int Quantity, decimal PriceAtOrder)> items)
+    {
+        _orderItems.Clear();
+        foreach (var (productId, quantity, priceAtOrder) in items)
+        {
+            _orderItems.Add(new OrderItem { ProductId = productId, Quantity = quantity, PriceAtOrder = priceAtOrder });
+        }
+        RecalculateTotals();
+    }
+
     public void MarkAsSynced()
     {
         IsSynced = true;

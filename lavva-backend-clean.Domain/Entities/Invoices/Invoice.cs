@@ -29,4 +29,10 @@ public class Invoice : BaseEntity {
 
         return new Invoice(orderId, invoiceNumber, totalAmount);
     }
+
+    public void UpdateTotal(lavva_backend_clean.Domain.ValueObjects.Money totalAmount)
+    {
+        TotalAmount = totalAmount ?? throw new ArgumentNullException(nameof(totalAmount), "Domain_Invoice_TotalAmountRequired");
+        UpdatedAt = DateTime.UtcNow;
+    }
 }
