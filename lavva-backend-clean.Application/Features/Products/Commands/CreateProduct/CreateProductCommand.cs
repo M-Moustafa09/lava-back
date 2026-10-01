@@ -13,5 +13,7 @@ public record CreateProductCommand(
     string? ProductCode = null,
     // Per-country pricing (2026-09-21): BasePrice is the international USD price.
     decimal? InternationalOriginalPrice = null,
-    List<CountryPriceInput>? CountryPrices = null
+    List<CountryPriceInput>? CountryPrices = null,
+    // The sizes the product is sold in, each with its CRM code (2026-10-01). Null = no sizes.
+    List<SizeCodeInput>? Sizes = null
 ) : IRequest<Result<CreateProductResponse>>;

@@ -90,12 +90,14 @@ public class Order : BaseEntity {
         };
     }
 
-    public void AddItem(Guid productId, int quantity, Money priceAtOrder)
+    public void AddItem(Guid productId, int quantity, Money priceAtOrder, string? size = null, string? productCode = null)
     {
         _orderItems.Add(new OrderItem {
             ProductId = productId,
             Quantity = quantity,
-            PriceAtOrder = priceAtOrder.Value
+            PriceAtOrder = priceAtOrder.Value,
+            Size = size,
+            ProductCode = productCode
         });
         RecalculateTotals();
     }
@@ -153,12 +155,12 @@ public class Order : BaseEntity {
         PaymentMethod = paymentMethod;
     }
 
-    public void ReplaceItems(IEnumerable<(Guid ProductId, int Quantity, decimal PriceAtOrder)> items)
+    public void ReplaceItems(IEnumerable<(Guid ProductId, int Quantity, decimal PriceAtOrder, string? Size, string? ProductCode)> items)
     {
         _orderItems.Clear();
-        foreach (var (productId, quantity, priceAtOrder) in items)
+        foreach (var (productId, quantity, priceAtOrder, size, productCode) in items)
         {
-            _orderItems.Add(new OrderItem { ProductId = productId, Quantity = quantity, PriceAtOrder = priceAtOrder });
+            _orderItems.Add(new OrderItem { ProductId = productId, Quantity = quantity, PriceAtOrder = priceAtOrder, Size = size, ProductCode = productCode });
         }
         RecalculateTotals();
     }

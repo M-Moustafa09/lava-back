@@ -139,6 +139,9 @@
   <data name="Order_CountryNotSold" xml:space="preserve">
     <value>Choose a delivery country from the available countries.</value>
   </data>
+  <data name="Order_SizeNotAvailable" xml:space="preserve">
+    <value>One of the chosen sizes is not available for this product.</value>
+  </data>
   <data name="Order_ProductNotSoldInCountry" xml:space="preserve">
     <value>One of the products in the cart is not available in the chosen country.</value>
   </data>

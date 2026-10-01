@@ -92,12 +92,11 @@ public class CrmProductsController : ControllerBase
         }
 
         // Live products only (the query filter hides deleted ones): a deleted product frees its code.
-        var linked = await _context.Products
-            .Where(p => p.ProductCode != null)
-            .Select(p => new { p.Id, p.ProductCode })
-            .ToListAsync(ct);
+        // Each size carries its own code too (a JSON column), so the products are read whole; the catalogue is small.
+        var linked = await _context.Products.AsNoTracking().ToListAsync(ct);
         var linkedByCode = linked
-            .GroupBy(p => p.ProductCode!.Trim(), StringComparer.OrdinalIgnoreCase)
+            .SelectMany(p => p.AllProductCodes().Select(code => (Code: code.Trim(), p.Id)))
+            .GroupBy(x => x.Code, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
 
         var items = rows

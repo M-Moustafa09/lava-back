@@ -112,7 +112,12 @@ public class CreateOrderHandler : IRequestHandler<CreateOrderCommand, Result<Cre
                 // Stock is not tracked (owner decision 2026-09-24): a product sold in the order country
                 // is always orderable. Products added from the dashboard have no inventory rows, and the
                 // old stock check refused every order for them.
-                order.AddItem(product.Id, itemDto.Quantity, lavva_backend_clean.Domain.ValueObjects.Money.FromDecimal(price));
+                if (!product.TryMatchSize(itemDto.Size, out var size))
+                    return Result.Failure<CreateOrderResponse>(new Error("Error.Validation", "Order_SizeNotAvailable"));
+
+                // The line keeps the CRM code of its size as it is now (each size is its own CRM product).
+                order.AddItem(product.Id, itemDto.Quantity, lavva_backend_clean.Domain.ValueObjects.Money.FromDecimal(price),
+                    size, product.ResolveProductCode(size));
 
                 notificationItems.Add(new OrderNotificationItem(product.NameEn, itemDto.Quantity, price));
             }

@@ -23,7 +23,7 @@ public class CreateProductHandler : IRequestHandler<CreateProductCommand, Result
             return Result.Failure<CreateProductResponse>(new Error("Error.NotFound", "Category_NotFound"));
         }
 
-        if (await ProductCodeGuard.IsTakenAsync(_context, request.ProductCode, null, cancellationToken))
+        if (await ProductCodeGuard.IsTakenAsync(_context, request.ProductCode, request.Sizes, null, cancellationToken))
         {
             return Result.Failure<CreateProductResponse>(new Error("Error.Validation", "Product_CodeInUse"));
         }
@@ -77,6 +77,7 @@ public class CreateProductHandler : IRequestHandler<CreateProductCommand, Result
 
         // Luxira/CRM product code, chosen from the dashboard dropdown (G3.1).
         product.SetProductCode(request.ProductCode);
+        product.SetSizes((request.Sizes ?? new()).Select(s => (s.Size, s.ProductCode)));
         product.SetInternationalPrice(request.BasePrice, request.InternationalOriginalPrice);
 
         _context.Products.Add(product);

@@ -45,8 +45,12 @@ public record ProductListResponse(
     // the storefront takes OfferPercent off the visitor's price. The prices above stay undiscounted.
     decimal? OfferPercent = null,
     DateTime? OfferEndsAt = null,
-    string? CategorySlug = null
+    string? CategorySlug = null,
+    // The CRM code of each size (2026-10-01); the dashboard form edits them with the sizes.
+    List<SizeCodeDto>? SizeCodes = null
 );
+
+public record SizeCodeDto(string Size, string ProductCode);
 
 public class GetProductsHandler : IRequestHandler<GetProductsQuery, Result<List<ProductListResponse>>>
 {
@@ -61,7 +65,7 @@ public class GetProductsHandler : IRequestHandler<GetProductsQuery, Result<List<
 
     public async Task<Result<List<ProductListResponse>>> Handle(GetProductsQuery request, CancellationToken cancellationToken)
     {
-        string cacheKey = await CatalogCache.KeyAsync(_cache, $"ProductsList_v2_{request.CategoryId}", cancellationToken);
+        string cacheKey = await CatalogCache.KeyAsync(_cache, $"ProductsList_v3_{request.CategoryId}", cancellationToken);
         var cachedData = await _cache.GetStringAsync(cacheKey, cancellationToken);
         
         List<ProductListResponse>? products = null;
@@ -112,7 +116,8 @@ public class GetProductsHandler : IRequestHandler<GetProductsQuery, Result<List<
                     .ToList(),
                 null,
                 null,
-                p.Category.Slug
+                p.Category.Slug,
+                p.SizeCodes.Select(sc => new SizeCodeDto(sc.Size, sc.ProductCode)).ToList()
             )).ToListAsync(cancellationToken);
             
             var options = new DistributedCacheEntryOptions()

@@ -14,7 +14,10 @@ public record UpdateProductCommand(
     // Per-country pricing (2026-09-21): BasePrice is the international USD price. CountryPrices
     // replaces the product's whole set; null leaves the stored prices untouched.
     decimal? InternationalOriginalPrice = null,
-    List<CountryPriceInput>? CountryPrices = null
+    List<CountryPriceInput>? CountryPrices = null,
+    // The product's sizes with their CRM codes (2026-10-01). Replaces the whole set; null leaves the
+    // stored sizes and codes untouched, so an older client cannot wipe them.
+    List<SizeCodeInput>? Sizes = null
 ) : IRequest<Result>;
 
 public class UpdateProductHandler : IRequestHandler<UpdateProductCommand, Result>
@@ -32,7 +35,7 @@ public class UpdateProductHandler : IRequestHandler<UpdateProductCommand, Result
     {
         var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken);
         if (product == null) return Result.Failure(new Error("Error.NotFound", "Product_NotFound"));
-        if (await ProductCodeGuard.IsTakenAsync(_context, request.ProductCode, product.Id, cancellationToken))
+        if (await ProductCodeGuard.IsTakenAsync(_context, request.ProductCode, request.Sizes, product.Id, cancellationToken))
             return Result.Failure(new Error("Error.Validation", "Product_CodeInUse"));
 
         var priceError = ProductCountryPrices.ValidateInternational(request.BasePrice, request.InternationalOriginalPrice);
@@ -89,6 +92,8 @@ public class UpdateProductHandler : IRequestHandler<UpdateProductCommand, Result
         // Luxira/CRM product code, chosen from the dashboard dropdown (G3.1). This command is a full
         // replace (like the fields above), and the dashboard form submits the current code.
         product.SetProductCode(request.ProductCode);
+        if (request.Sizes != null)
+            product.SetSizes(request.Sizes.Select(s => (s.Size, s.ProductCode)));
         product.SetInternationalPrice(request.BasePrice, request.InternationalOriginalPrice);
 
         _context.Products.Update(product);

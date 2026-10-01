@@ -15,6 +15,7 @@ public record CreateOrderCommand(
     string? Area = null
 ) : IRequest<Result<CreateOrderResponse>>;
 
-public record OrderItemDto(Guid ProductId, int Quantity);
+// Size: the one the customer chose (2026-10-01); it picks the CRM code the line is synced with.
+public record OrderItemDto(Guid ProductId, int Quantity, string? Size = null);
 
 public record CreateOrderResponse(Guid OrderId, string OrderNumber, decimal TotalAmount, Guid CountryId, string Currency = "");

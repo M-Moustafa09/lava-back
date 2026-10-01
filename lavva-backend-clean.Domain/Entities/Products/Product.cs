@@ -32,6 +32,11 @@ public class Product : BaseEntity
     // item to its warehouse row. Nullable: existing products carry none until an admin assigns one. (G3.1)
     public string? ProductCode { get; private set; }
 
+    // The CRM code of each size (owner decision 2026-10-01: every size is its own CRM product). An order
+    // line takes its size's code; ProductCode above stays the fallback for a size with no code of its
+    // own and for products without sizes.
+    public List<ProductSizeCode> SizeCodes { get; private set; } = new();
+
     // One optional video, shown on the product page after the images. Uploaded on its own endpoint
     // (not inline like the images) because a video is too big to travel inside the JSON body.
     public string? VideoUrl { get; private set; }
@@ -161,6 +166,57 @@ public class Product : BaseEntity
     public void SetProductCode(string? productCode)
     {
         ProductCode = string.IsNullOrWhiteSpace(productCode) ? null : productCode.Trim();
+    }
+
+    /// <summary>
+    /// Replaces the product's sizes and their CRM codes together, in the order given. A size with no
+    /// code keeps being sold and falls back to <see cref="ProductCode"/>.
+    /// </summary>
+    public void SetSizes(IEnumerable<(string Size, string? ProductCode)> sizes)
+    {
+        var sizeList = new List<string>();
+        var codes = new List<ProductSizeCode>();
+        foreach (var (rawSize, rawCode) in sizes)
+        {
+            var size = (rawSize ?? string.Empty).Trim();
+            if (size.Length == 0 || sizeList.Contains(size, StringComparer.OrdinalIgnoreCase)) continue;
+            sizeList.Add(size);
+            if (!string.IsNullOrWhiteSpace(rawCode))
+                codes.Add(new ProductSizeCode { Size = size, ProductCode = rawCode.Trim() });
+        }
+        Sizes = sizeList;
+        SizeCodes = codes;
+    }
+
+    /// <summary>
+    /// The size as this product spells it. No size is accepted (older storefronts, products without
+    /// sizes) and falls back to the product's code; a size the product is not sold in is refused, since
+    /// it would ship under the wrong CRM code.
+    /// </summary>
+    public bool TryMatchSize(string? requested, out string? size)
+    {
+        size = null;
+        if (string.IsNullOrWhiteSpace(requested)) return true;
+        size = Sizes.FirstOrDefault(s => string.Equals(s, requested.Trim(), StringComparison.OrdinalIgnoreCase));
+        return size != null;
+    }
+
+    /// <summary>The CRM code an order line of this size is sent with.</summary>
+    public string? ResolveProductCode(string? size)
+    {
+        if (!string.IsNullOrWhiteSpace(size))
+        {
+            var match = (SizeCodes ?? new()).FirstOrDefault(c => string.Equals(c.Size, size.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (match != null) return match.ProductCode;
+        }
+        return ProductCode;
+    }
+
+    /// <summary>Every CRM code this product uses: its own and its sizes'.</summary>
+    public IEnumerable<string> AllProductCodes()
+    {
+        if (!string.IsNullOrWhiteSpace(ProductCode)) yield return ProductCode;
+        foreach (var c in SizeCodes ?? new()) yield return c.ProductCode;
     }
 
     public void SetInternationalPrice(decimal price, decimal? originalPrice)

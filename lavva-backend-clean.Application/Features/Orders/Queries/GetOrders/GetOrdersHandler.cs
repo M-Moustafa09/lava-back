@@ -92,7 +92,9 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, Result<GetOrders
                 ProductNameEn = i.Product.NameEn,
                 ProductImages = i.Product.Images,
                 i.Quantity,
-                UnitPrice = i.PriceAtOrder
+                UnitPrice = i.PriceAtOrder,
+                i.Size,
+                i.ProductCode
             })
             .ToListAsync(cancellationToken);
 
@@ -128,7 +130,9 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, Result<GetOrders
                 i.ProductNameEn,
                 ProductImage = i.ProductImages.FirstOrDefault(),
                 i.Quantity,
-                i.UnitPrice
+                i.UnitPrice,
+                i.Size,
+                i.ProductCode
             }).ToList(),
             BankTransfers = transfersLookup[o.Id].Select(t => new
             {

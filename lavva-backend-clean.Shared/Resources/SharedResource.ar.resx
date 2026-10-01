@@ -139,6 +139,9 @@
   <data name="Order_CountryNotSold" xml:space="preserve">
     <value>اختر دولة التوصيل من الدول المتاحة.</value>
   </data>
+  <data name="Order_SizeNotAvailable" xml:space="preserve">
+    <value>أحد المقاسات المختارة غير متاح لهذا المنتج.</value>
+  </data>
   <data name="Order_ProductNotSoldInCountry" xml:space="preserve">
     <value>أحد المنتجات في السلة غير متاح في الدولة المختارة.</value>
   </data>

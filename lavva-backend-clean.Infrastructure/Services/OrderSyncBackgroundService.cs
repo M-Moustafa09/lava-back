@@ -273,7 +273,9 @@ public class OrderSyncBackgroundService : BackgroundService
         Items = order.OrderItems.Select(i => new CrmOrderItemSyncDto
         {
             ProductName = i.Product?.NameAr ?? i.Product?.NameEn ?? i.ProductId.ToString(),
-            ProductCode = i.Product?.ProductCode, // Luxira/CRM code for CRM-side resolution (G3.1)
+            // The code of the line's size, taken when the order was placed (each size is its own CRM
+            // product); lines from before sizes were recorded fall back to the product's code (G3.1).
+            ProductCode = i.ProductCode ?? i.Product?.ResolveProductCode(i.Size),
             Quantity = i.Quantity,
             UnitPrice = i.PriceAtOrder
         }).ToList()

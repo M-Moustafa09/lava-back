@@ -988,11 +988,19 @@ namespace lavva_backend_clean.Infrastructure.Migrations
                     b.Property<decimal>("PriceAtOrder")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("ProductCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
+
+                    b.Property<string>("Size")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1774,7 +1782,34 @@ namespace lavva_backend_clean.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.OwnsMany("lavva_backend_clean.Domain.Entities.Products.ProductSizeCode", "SizeCodes", b1 =>
+                        {
+                            b1.Property<Guid>("ProductId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAddOrUpdate();
+
+                            b1.Property<string>("ProductCode")
+                                .IsRequired();
+
+                            b1.Property<string>("Size")
+                                .IsRequired();
+
+                            b1.HasKey("ProductId", "__synthesizedOrdinal");
+
+                            b1.ToTable("Products");
+
+                            b1
+                                .ToJson("SizeCodes")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ProductId");
+                        });
+
                     b.Navigation("Category");
+
+                    b.Navigation("SizeCodes");
                 });
 
             modelBuilder.Entity("lavva_backend_clean.Domain.Entities.Products.ProductPrice", b =>
