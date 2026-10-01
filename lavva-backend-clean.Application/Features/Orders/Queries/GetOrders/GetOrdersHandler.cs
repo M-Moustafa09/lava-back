@@ -51,6 +51,7 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, Result<GetOrders
                 PaymentStatus = o.PaymentStatus.ToString(),
                 Total = o.TotalAmount.Value,
                 TotalAmount = o.TotalAmount.Value,
+                o.Currency,
                 o.City,
                 o.Area,
                 o.DeliveryCompany,
@@ -78,6 +79,23 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, Result<GetOrders
 
         var transfersLookup = transfers.ToLookup(t => t.OrderId);
 
+        var items = await _context.OrderItems
+            .IgnoreQueryFilters()
+            .Where(i => orderIds.Contains(i.OrderId) && !i.IsDeleted)
+            .Select(i => new
+            {
+                i.OrderId,
+                i.ProductId,
+                ProductNameAr = i.Product.NameAr,
+                ProductNameEn = i.Product.NameEn,
+                ProductImages = i.Product.Images,
+                i.Quantity,
+                UnitPrice = i.PriceAtOrder
+            })
+            .ToListAsync(cancellationToken);
+
+        var itemsLookup = items.ToLookup(i => i.OrderId);
+
         var data = orders.Select(o => new
         {
             o.Id,
@@ -91,6 +109,7 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, Result<GetOrders
             o.PaymentStatus,
             o.Total,
             o.TotalAmount,
+            o.Currency,
             o.City,
             o.Area,
             o.DeliveryCompany,
@@ -99,6 +118,15 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, Result<GetOrders
             o.ShipmentCode,
             o.Notes,
             o.CreatedAt,
+            Items = itemsLookup[o.Id].Select(i => new
+            {
+                i.ProductId,
+                i.ProductNameAr,
+                i.ProductNameEn,
+                ProductImage = i.ProductImages.FirstOrDefault(),
+                i.Quantity,
+                i.UnitPrice
+            }).ToList(),
             BankTransfers = transfersLookup[o.Id].Select(t => new
             {
                 t.Id,

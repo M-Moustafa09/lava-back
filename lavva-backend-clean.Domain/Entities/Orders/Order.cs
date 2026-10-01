@@ -125,7 +125,7 @@ public class Order : BaseEntity {
     {
         Phone = phone;
         Address = address;
-        ShipmentCode = shipmentCode;
+        ShipmentCode = string.IsNullOrWhiteSpace(shipmentCode) ? null : shipmentCode.Trim();
     }
 
     public void MarkAsSynced()

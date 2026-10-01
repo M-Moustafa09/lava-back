@@ -936,9 +936,6 @@ namespace lavva_backend_clean.Infrastructure.Migrations
                     b.Property<Guid>("EditedBy")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("EditorId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("FieldName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -963,7 +960,7 @@ namespace lavva_backend_clean.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EditorId");
+                    b.HasIndex("EditedBy");
 
                     b.HasIndex("OrderId");
 
@@ -1735,7 +1732,7 @@ namespace lavva_backend_clean.Infrastructure.Migrations
                 {
                     b.HasOne("lavva_backend_clean.Domain.Entities.Users.User", "Editor")
                         .WithMany()
-                        .HasForeignKey("EditorId")
+                        .HasForeignKey("EditedBy")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
